@@ -1,0 +1,470 @@
+JVM运行时数据区的内存模型由五部分组成：
+
+【1】方法区
+【2】堆
+【3】JAVA栈
+【4】PC寄存器
+【5】本地方法栈
+
+对于String s = "haha" ,它的虚拟机指令：
+0:   ldc     "16; //String haha    
+2:   astore_1 
+3:   return
+
+对于上面虚拟机指令，其各自的指令流程在《深入JAVA虚拟机》这样描述到(结合上面实例)：
+
+ldc指令格式：ldc,index
+
+ldc指令过程：
+
+要执行ldc指令，JVM首先查找index所指定的常量池入口，在index指向的常量池入口，JVM将会查找CONSTANT_Integer_info，CONSTANT_Float_info和CONSTANT_String_info入口。如果还没有这些入口，JVM会解析它们。而对于上面的hahaJVM会找到CONSTANT_String_info入口，同时，将把指向被拘留String对象（由解析该入口的进程产生）的引用压入操作数栈。
+
+astore_1指令格式：astore_1
+
+astore_1指令过程：
+
+要执行astore_1指令，JVM从操作数栈顶部弹出一个引用类型或者returnAddress类型值，然后将该值存入由索引1指定的局部变量中,即将引用类型或者returnAddress类型值存入局部变量1。
+
+return 指令的过程：
+
+从方法中返回，返回值为void。
+
+谈一下我个人理解：
+
+从上面的ldc指令的执行过程可以得出：s的值是来自被拘留String对象（由解析该入口的进程产生）的引用，即可以理解为是从被拘留String对象的引用复制而来的，故我个人的理解是s的值是存在栈当中。上面是对于s值得分析，接着是对于"haha"值的分析,我们知道，对于String s = "haha" 其中"haha"值在JAVA程序编译期就确定下来了的。简单一点说，就是haha的值在程序编译成class文件后，就在class文件中生成了（大家可以用UE编辑器或其它文本编辑工具在打开class文件后的字节码文件中看到这个haha值）。执行JAVA程序的过程中，第一步是class文件生成，然后被JVM装载到内存执行。那么JVM装载这个class到内存中，其中的haha这个值，在内存中是怎么为其开辟空间并存储在哪个区域中呢？
+
+说到这里，我们不妨先来了解一下JVM常量池这个结构，《深入JAVA虚拟机》书中有这样的描述：
+
+常量池
+
+虚拟机必须为每个被装载的类型维护一个常量池。常量池就是该类型所用到常量的一个有序集和，包括直接常量（string,integer和floating point常量）和对其他类型，字段和方法的符号引用。对于String常量，它的值是在常量池中的。而JVM中的常量池在内存当中是以表的形式存在的，对于String类型，有一张固定长度的CONSTANT_String_info表用来存储文字字符串值，注意：该表只存储文字字符串值，不存储符号引用。说到这里，对常量池中的字符串值的存储位置应该有一个比较明了的理解了。
+
+在介绍完JVM常量池的概念后，接着谈开始提到的"haha"的值的内存分布的位置。对于haha的值，实际上是在class文件被JVM装载到内存当中并被引擎在解析ldc指令并执行ldc指令之前，JVM就已经为haha这个字符串在常量池的CONSTANT_String_info表中分配了空间来存储haha这个值。既然haha这个字符串常量存储在常量池中，根据《深入JAVA虚拟机》书中描述：常量池是属于类型信息的一部分，类型信息也就是每一个被转载的类型，这个类型反映到JVM内存模型中是对应存在于JVM内存模型的方法区中，也就是这个类型信息中的常量池概念是存在于在方法区中，而方法区是在JVM内存模型中的堆中由JVM来分配的。所以，haha的值是应该是存在堆空间中的。
+
+而对于String s = new String("haha") ,它的JVM指令：
+0:   new     "16; //class String
+3:   dup
+4:   ldc     "18; //String haha
+6:   invokespecial   "20; //Method java/lang/String."":(Ljava/lang/String;)V
+9:   astore_1
+10:  return
+
+对于上面虚拟机指令，其各自的指令流程在《深入JAVA虚拟机》这样描述到(结合上面实例)：
+
+new指令格式：new indexbyte1,indexbyte2
+
+new指令过程：
+
+要执行new指令，Jvm通过计算(indextype1<<8)|indextype2生成一个指向常量池的无符号16位索引。然后JVM根据计算出的索引查找常量池入口。该索引所指向的常量池入口必须为CONSTANT_Class_info。如果该入口尚不存在，那么JVM将解析这个常量池入口，该入口类型必须是类。JVM从堆中为新对象映像分配足够大的空间，并将对象的实例变量设为默认值。最后JVM将指向新对象的引用objectref压入操作数栈。
+
+dup指令格式：dup
+
+dup指令过程：
+
+要执行dup指令，JVM复制了操作数栈顶部一个字长的内容，然后再将复制内容压入栈。本指令能够从操作数栈顶部复制任何单位字长的值。但绝对不要使用它来复制操作数栈顶部任何两个字长(long型或double型)中的一个字长。上面例中，即复制引用objectref，这时在操作数栈存在2个引用。
+
+ldc指令格式：ldc,index
+
+ldc指令过程：
+
+要执行ldc指令，JVM首先查找index所指定的常量池入口，在index指向的常量池入口，JVM将会查找CONSTANT_Integer_info，CONSTANT_Float_info和CONSTANT_String_info入口。如果还没有这些入口，JVM会解析它们。而对于上面的haha,JVM会找到CONSTANT_String_info入口，同时，将把指向被拘留String对象（由解析该入口的进程产生）的引用压入操作数栈。
+
+invokespecial指令格式：invokespecial,indextype1,indextype2
+
+invokespecial指令过程：对于该类而言，该指令是用来进行实例初始化方法的调用。鉴于该指令篇幅，具体可以查阅《深入JAVA虚拟机》中描述。上面例子中，即通过其中一个引用调用String类的构造器，初始化对象实例，让另一个相同的引用指向这个被初始化的对象实例，然后前一个引用弹出操作数栈。
+
+astore_1指令格式：astore_1
+
+astore_1指令过程：
+
+要执行astore_1指令，JVM从操作数栈顶部弹出一个引用类型或者returnAddress类型值，然后将该值存入由索引1指定的局部变量中,即将引用类型或者returnAddress类型值存入局部变量1。
+
+return 指令的过程:
+
+从方法中返回，返回值为void。
+
+要执行astore_1指令，JVM从操作数栈顶部弹出一个引用类型或者returnAddress类型值，然后将该值存入由索引1指定的局部变量中,即将引用类型或者returnAddress类型值存入局部变量1。
+
+
+通过上面6个指令，可以看出，String s = new String("haha");中的haha存储在堆空间中，而s则是在操作数栈中。
+上面是对s和haha值的内存情况的分析和理解；那对于String s = new String("haha");语句,到底创建了几个对象呢?
+我的理解：这里"haha"本身就是常量池中的一个对象，而在运行时执行new String()时，将常量池中的对象复制一份放到堆中，并且把堆中的这个对象的引用交给s持有。所以这条语句就创建了2个String对象。
+
+
+下面是一些String相关的常见问题：
+
+String中的final用法和理解
+
+final StringBuffer a = new StringBuffer("111");
+final StringBuffer b = new StringBuffer("222");
+
+a=b;//此句编译不通过
+
+final StringBuffer a = new StringBuffer("111");
+a.append("222");//编译通过
+可见，final只对引用的"值"(即内存地址)有效，它迫使引用只能指向初始指向的那个对象，改变它的指向会导致编译期错误。至于它所指向的对象的变化，final是不负责的。
+
+String 常量池问题的几个例子
+
+下面是几个常见例子的比较分析和理解：
+[1]
+
+String a = "a1"; 
+String b = "a" + 1; 
+System.out.println((a == b)); //result = true
+String a = "atrue"; 
+String b = "a" + "true"; 
+System.out.println((a == b)); //result = true
+String a = "a3.4"; 
+String b = "a" + 3.4; 
+System.out.println((a == b)); //result = true
+分析：JVM对于字符串常量的"+"号连接，将程序编译期，JVM就将常量字符串的"+"连接优化为连接后的值，拿"a" + 1来说，经编译器优化后在class中就已经是a1。在编译期其字符串常量的值就确定下来，故上面程序最终的结果都为true。
+
+[2]
+
+String a = "ab"; 
+String bb = "b"; 
+String b = "a" + bb; 
+System.out.println((a == b)); //result = false
+分析：JVM对于字符串引用，由于在字符串的"+"连接中，有字符串引用存在，而引用的值在程序编译期是无法确定的，即"a" + bb无法被编译器优化，只有在程序运行期来动态分配并将连接后的新地址赋给b。所以上面程序的结果也就为false。
+
+[3]
+
+String a = "ab"; 
+final String bb = "b"; 
+String b = "a" + bb; 
+System.out.println((a == b)); //result = true
+分析：和[3]中唯一不同的是bb字符串加了final修饰，对于final修饰的变量，它在编译时被解析为常量值的一个本地拷贝存储到自己的常量池中或嵌入到它的字节码流中。所以此时的"a" + bb和"a" + "b"效果是一样的。故上面程序的结果为true。
+
+[4]
+
+String a = "ab"; 
+final String bb = getBB(); 
+String b = "a" + bb; 
+System.out.println((a == b)); //result = false 
+private static String getBB() {
+return "b"; 
+}
+分析：JVM对于字符串引用bb，它的值在编译期无法确定，只有在程序运行期调用方法后，将方法的返回值和"a"来动态连接并分配地址为b，故上面程序的结果为false。
+
+通过上面4个例子可以得出得知：
+String  s  =  "a" + "b" + "c";   
+就等价于String s = "abc";  
+
+String  a  =  "a";   
+String  b  =  "b";   
+String  c  =  "c";   
+String  s  =   a  +  b  +  c;    
+这个就不一样了，最终结果等于：   
+StringBuffer temp = new StringBuffer();   
+temp.append(a).append(b).append(c);   
+String s = temp.toString();
+
+由上面的分析结果，可就不难推断出String 采用连接运算符（+）效率低下原因分析，形如这样的代码：
+
+public class Test {
+	public static void main(String args[]) {
+	String s = null;
+		for(int i = 0; i < 100; i++) {
+		s += "a";
+		}
+	}
+}
+每做一次 + 就产生个StringBuilder对象，然后append后就扔掉。下次循环再到达时重新产生个StringBuilder对象，然后 append 字符串，如此循环直至结束。 如果我们直接采用 StringBuilder 对象进行 append 的话，我们可以节省 N - 1 次创建和销毁对象的时间。所以对于在循环中要进行字符串连接的应用，一般都是用StringBuffer或StringBulider对象来进行append操作。
+
+String对象的intern方法理解和分析：
+
+public class Test4 {
+	private static String a = "ab"; 
+	public static void main(String[] args){
+		String s1 = "a";
+		String s2 = "b";
+		String s = s1 + s2;
+		System.out.println(s == a);//false
+		System.out.println(s.intern() == a);//true  
+	}
+}
+这里用到Java里面是一个常量池的问题。对于s1+s2操作，其实是在堆里面重新创建了一个新的对象,s保存的是这个新对象在堆空间的的内容，所以s与a的值是不相等的。而当调用s.intern()方法，却可以返回s在常量池中的地址值，因为a的值存储在常量池中，故s.intern和a的值相等
+
+
+1. 首先String不属于8种基本数据类型，String是一个对象。 
+    因为对象的默认值是null，所以String的默认值也是null；但它又是一种特殊的对象，有其它对象没有的一些特性。 
+
+2. new String()和new String(“”)都是申明一个新的空字符串，是空串不是null； 
+
+3. String str=”kvill”； 
+    String str=new String (“kvill”);的区别： 
+　　在这里，我们不谈堆，也不谈栈，只先简单引入常量池这个简单的概念。 
+　　常量池(constant pool)指的是在编译期被确定，并被保存在已编译的.class文件中的一些数据。它包括了关于类、方法、接口等中的常量，也包括字符串常量。 
+　　看例1： 
+Java代码  收藏代码
+String s0=”kvill”;    
+String s1=”kvill”;    
+String s2=”kv” + “ill”;    
+System.out.println( s0==s1 );    
+System.out.println( s0==s2 );     
+
+结果为： 
+     true 
+     true 
+　　首先，我们要知道Java会确保一个字符串常量只有一个拷贝。 
+　　因为例子中的s0和s1中的”kvill”都是字符串常量，它们在编译期就被确定了，所以s0==s1为true；而”kv”和”ill”也都是字符串常量，当一个字符串由多个字符串常量连接而成时，它自己肯定也是字符串常量，所以s2也同样在编译期就被解析为一个字符串常量，所以s2也是常量池中”kvill”的一个引用。 
+　　所以我们得出s0==s1==s2; 
+　　用new String() 创建的字符串不是常量，不能在编译期就确定，所以new String() 创建的字符串不放入常量池中，它们有自己的地址空间。 
+　　看例2： 
+Java代码  收藏代码
+String s0=”kvill”;    
+String s1=new String(”kvill”);    
+String s2=”kv” + new String(“ill”);    
+System.out.println( s0==s1 );    
+System.out.println( s0==s2 );    
+System.out.println( s1==s2 );     
+
+结果为： 
+     false 
+     false 
+     false 
+　　例2中s0还是常量池中”kvill”的应用，s1因为无法在编译期确定，所以是运行时创建的新对象”kvill”的引用，s2因为有后半部分new String(“ill”)所以也无法在编译期确定，所以也是一个新创建对象”kvill”的应用;明白了这些也就知道为何得出此结果了。 
+
+4. String.intern()： 
+　　再补充介绍一点：存在于.class文件中的常量池，在运行期被JVM装载，并且可以扩充。String的intern()方法就是扩充常量池的一个方法；当一个String实例str调用intern()方法时，Java查找常量池中是否有相同Unicode的字符串常量，如果有，则返回其的引用，如果没有，则在常量池中增加一个Unicode等于str的字符串并返回它的引用；看例3就清楚了 
+　　例3： 
+Java代码  收藏代码
+String s0= “kvill”;    
+String s1=new String(”kvill”);    
+String s2=new String(“kvill”);    
+System.out.println( s0==s1 );    
+System.out.println( “**********” );    
+s1.intern();    
+s2=s2.intern(); //把常量池中“kvill”的引用赋给s2    
+System.out.println( s0==s1);    
+System.out.println( s0==s1.intern() );    
+System.out.println( s0==s2 );   
+  
+结果为： 
+false 
+********** 
+false //虽然执行了s1.intern(),但它的返回值没有赋给s1 
+true //说明s1.intern()返回的是常量池中”kvill”的引用 
+true 
+　　最后我再破除一个错误的理解： 
+　　有人说，“使用String.intern()方法则可以将一个String类的保存到一个全局String表中，如果具有相同值的Unicode字符串已经在这个表中，那么该方法返回表中已有字符串的地址，如果在表中没有相同值的字符串，则将自己的地址注册到表中“如果我把他说的这个全局的String表理解为常量池的话，他的最后一句话，“如果在表中没有相同值的字符串，则将自己的地址注册到表中”是错的： 
+　　看例4： 
+Java代码  收藏代码
+String s1=new String("kvill");    
+String s2=s1.intern();    
+System.out.println( s1==s1.intern() );    
+System.out.println( s1+" "+s2 );    
+System.out.println( s2==s1.intern() );    
+
+结果： 
+false 
+kvill kvill 
+true 
+　　在这个类中我们没有声名一个”kvill”常量，所以常量池中一开始是没有”kvill”的，当我们调用s1.intern()后就在常量池中新添加了一个”kvill”常量，原来的不在常量池中的”kvill”仍然存在，也就不是“将自己的地址注册到常量池中”了。 
+　　s1==s1.intern()为false说明原来的“kvill”仍然存在； 
+　　s2现在为常量池中“kvill”的地址，所以有s2==s1.intern()为true。 
+5.创建几个对象 
+Java代码  收藏代码
+String str1 = new String("hello");  
+String str3 = str1;  
+str1+="world";  
+String str2 = "helloworld";  
+System.out.println(str1==str2);  
+System.out.println(str1==str3);  
+
+结果为： 
+false 
+false 
+上例创建了5个对象，str1在堆中，“hello”在字符串常量池，“world”在字符串常量池， 
+“helloworld”在字符串常量池中，在堆中又生成一个"helloworld"赋给了str1.正好也应证了4中的str1是堆中的，和池中的没有关系,调用intern()方法它也不是将自己的地址注册到常量池中的。 
+6. 关于equals()和==: 
+　　这个对于String简单来说就是比较两字符串的Unicode序列是否相当，如果相等返回true;而==是比较两字符串的地址是否相同，也就是是否是同一个字符串的引用。 
+
+7. 关于String是不可变的 
+　　这一说又要说很多，大家只要知道String的实例一旦生成就不会再改变了，比如说：String str=”kv”+”ill”+” “+”ans”; 
+就是有4个字符串常量，首先”kv”和”ill”生成了”kvill”存在内存中，然后”kvill”又和” “ 生成 ”kvill “存在内存中，最后又和生成了”kvill ans”;并把这个字符串的地址赋给了str,就是因为String的“不可变”产生了很多临时变量，这也就是为什么建议用StringBuffer的原因了，因为StringBuffer是可改变的. 
+
+
+
+【转载】http://www.open-open.com/home/space-4097-do-blog-id-1336.html 
+这也是一篇关于常量池的文章。 
+理解Java常量池--从JVM原理上理解字符串的比较： 
+JVM运行时数据区的内存模型由五部分组成： 
+
+【1】方法区 
+【2】堆 
+【3】JAVA栈 
+【4】PC寄存器 
+【5】本地方法栈 
+
+对于String s = "haha" ,它的虚拟机指令： 
+0:   ldc     "16; //String haha    
+2:   astore_1 
+3:   return 
+
+对于上面虚拟机指令，其各自的指令流程在《深入JAVA虚拟机》这样描述到(结合上面实例)： 
+
+ldc指令格式：ldc,index 
+
+ldc指令过程： 
+
+要执行ldc指令，JVM首先查找index所指定的常量池入口，在index指向的常量池入口，JVM将会查找CONSTANT_Integer_info，CONSTANT_Float_info和CONSTANT_String_info入口。如果还没有这些入口，JVM会解析它们。而对于上面的hahaJVM会找到CONSTANT_String_info入口，同时，将把指向被拘留String对象（由解析该入口的进程产生）的引用压入操作数栈。 
+
+astore_1指令格式：astore_1 
+
+astore_1指令过程： 
+
+要执行astore_1指令，JVM从操作数栈顶部弹出一个引用类型或者returnAddress类型值，然后将该值存入由索引1指定的局部变量中,即将引用类型或者returnAddress类型值存入局部变量1。 
+
+return 指令的过程： 
+
+从方法中返回，返回值为void。 
+
+谈一下我个人理解： 
+
+从上面的ldc指令的执行过程可以得出：s的值是来自被拘留String对象（由解析该入口的进程产生）的引用，即可以理解为是从被拘留String对象的引用复制而来的，故我个人的理解是s的值是存在栈当中。上面是对于s值得分析，接着是对于"haha"值的分析,我们知道，对于String s = "haha" 其中"haha"值在JAVA程序编译期就确定下来了的。简单一点说，就是haha的值在程序编译成class文件后，就在class文件中生成了（大家可以用UE编辑器或其它文本编辑工具在打开class文件后的字节码文件中看到这个haha值）。执行JAVA程序的过程中，第一步是class文件生成，然后被JVM装载到内存执行。那么JVM装载这个class到内存中，其中的haha这个值，在内存中是怎么为其开辟空间并存储在哪个区域中呢？ 
+
+说到这里，我们不妨先来了解一下JVM常量池这个结构，《深入JAVA虚拟机》书中有这样的描述： 
+
+常量池 
+
+虚拟机必须为每个被装载的类型维护一个常量池。常量池就是该类型所用到常量的一个有序集和，包括直接常量（string,integer和floating point常量）和对其他类型，字段和方法的符号引用。对于String常量，它的值是在常量池中的。而JVM中的常量池在内存当中是以表的形式存在的，对于String类型，有一张固定长度的CONSTANT_String_info表用来存储文字字符串值，注意：该表只存储文字字符串值，不存储符号引用。说到这里，对常量池中的字符串值的存储位置应该有一个比较明了的理解了。 
+
+在介绍完JVM常量池的概念后，接着谈开始提到的"haha"的值的内存分布的位置。对于haha的值，实际上是在class文件被JVM装载到内存当中并被引擎在解析ldc指令并执行ldc指令之前，JVM就已经为haha这个字符串在常量池的CONSTANT_String_info表中分配了空间来存储haha这个值。既然haha这个字符串常量存储在常量池中，根据《深入JAVA虚拟机》书中描述：常量池是属于类型信息的一部分，类型信息也就是每一个被转载的类型，这个类型反映到JVM内存模型中是对应存在于JVM内存模型的方法区中，也就是这个类型信息中的常量池概念是存在于在方法区中，而方法区是在JVM内存模型中的堆中由JVM来分配的。所以，haha的值是应该是存在堆空间中的。 
+
+而对于String s = new String("haha") ,它的JVM指令： 
+0:   new     "16; //class String 
+3:   dup 
+4:   ldc     "18; //String haha 
+6:   invokespecial   "20; //Method java/lang/String."":(Ljava/lang/String;)V 
+9:   astore_1 
+10:  return 
+
+对于上面虚拟机指令，其各自的指令流程在《深入JAVA虚拟机》这样描述到(结合上面实例)： 
+
+new指令格式：new indexbyte1,indexbyte2 
+
+new指令过程： 
+
+要执行new指令，Jvm通过计算(indextype1<<8)|indextype2生成一个指向常量池的无符号16位索引。然后JVM根据计算出的索引查找常量池入口。该索引所指向的常量池入口必须为CONSTANT_Class_info。如果该入口尚不存在，那么JVM将解析这个常量池入口，该入口类型必须是类。JVM从堆中为新对象映像分配足够大的空间，并将对象的实例变量设为默认值。最后JVM将指向新对象的引用objectref压入操作数栈。 
+
+dup指令格式：dup 
+
+dup指令过程： 
+
+要执行dup指令，JVM复制了操作数栈顶部一个字长的内容，然后再将复制内容压入栈。本指令能够从操作数栈顶部复制任何单位字长的值。但绝对不要使用它来复制操作数栈顶部任何两个字长(long型或double型)中的一个字长。上面例中，即复制引用objectref，这时在操作数栈存在2个引用。 
+
+ldc指令格式：ldc,index 
+
+ldc指令过程： 
+
+要执行ldc指令，JVM首先查找index所指定的常量池入口，在index指向的常量池入口，JVM将会查找CONSTANT_Integer_info，CONSTANT_Float_info和CONSTANT_String_info入口。如果还没有这些入口，JVM会解析它们。而对于上面的haha,JVM会找到CONSTANT_String_info入口，同时，将把指向被拘留String对象（由解析该入口的进程产生）的引用压入操作数栈。 
+
+invokespecial指令格式：invokespecial,indextype1,indextype2 
+
+invokespecial指令过程：对于该类而言，该指令是用来进行实例初始化方法的调用。鉴于该指令篇幅，具体可以查阅《深入JAVA虚拟机》中描述。上面例子中，即通过其中一个引用调用String类的构造器，初始化对象实例，让另一个相同的引用指向这个被初始化的对象实例，然后前一个引用弹出操作数栈。 
+
+astore_1指令格式：astore_1 
+
+astore_1指令过程： 
+
+要执行astore_1指令，JVM从操作数栈顶部弹出一个引用类型或者returnAddress类型值，然后将该值存入由索引1指定的局部变量中,即将引用类型或者returnAddress类型值存入局部变量1。 
+
+return 指令的过程: 
+
+从方法中返回，返回值为void。 
+
+要执行astore_1指令，JVM从操作数栈顶部弹出一个引用类型或者returnAddress类型值，然后将该值存入由索引1指定的局部变量中,即将引用类型或者returnAddress类型值存入局部变量1。 
+
+
+通过上面6个指令，可以看出，String s = new String("haha");中的haha存储在堆空间中，而s则是在操作数栈中。 
+上面是对s和haha值的内存情况的分析和理解；那对于String s = new String("haha");语句,到底创建了几个对象呢?
+我的理解：这里"haha"本身就是常量池中的一个对象，而在运行时执行new String()时，将常量池中的对象复制一份放到堆中，并且把堆中的这个对象的引用交给s持有。所以这条语句就创建了2个String对象。 
+
+
+下面是一些String相关的常见问题： 
+
+String中的final用法和理解 
+Java代码  收藏代码
+final StringBuffer b = new StringBuffer("222");    
+    
+a=b;//此句编译不通过    
+    
+final StringBuffer a = new StringBuffer("111");   
+
+可见，final只对引用的"值"(即内存地址)有效，它迫使引用只能指向初始指向的那个对象，改变它的指向会导致编译期错误。至于它所指向的对象的变化，final是不负责的。 
+
+String 常量池问题的几个例子 
+
+下面是几个常见例子的比较分析和理解： 
+
+Java代码  收藏代码
+String b = "a" + 1;     
+System.out.println((a == b)); //result = true    
+String a = "atrue";     
+String b = "a" + "true";     
+System.out.println((a == b)); //result = true    
+String a = "a3.4";     
+String b = "a" + 3.4;     
+System.out.println((a == b)); //result = true    
+
+分析：JVM对于字符串常量的"+"号连接，将程序编译期，JVM就将常量字符串的"+"连接优化为连接后的值，拿"a" + 1来说，经编译器优化后在class中就已经是a1。在编译期其字符串常量的值就确定下来，故上面程序最终的结果都为true。 
+Java代码  收藏代码
+String bb = "b";     
+String b = "a" + bb;     
+System.out.println((a == b)); //result = false  
+
+分析：JVM对于字符串引用，由于在字符串的"+"连接中，有字符串引用存在，而引用的值在程序编译期是无法确定的，即"a" + bb无法被编译器优化，只有在程序运行期来动态分配并将连接后的新地址赋给b。所以上面程序的结果也就为false。 
+Java代码  收藏代码
+final String bb = "b";     
+String b = "a" + bb;     
+System.out.println((a == b)); //result = true  
+
+分析：和[3]中唯一不同的是bb字符串加了final修饰，对于final修饰的变量，它在编译时被解析为常量值的一个本地拷贝存储到自己的常量池中或嵌入到它的字节码流中。所以此时的"a" + bb和"a" + "b"效果是一样的。故上面程序的结果为true。 
+
+Java代码  收藏代码
+final String bb = getBB();     
+String b = "a" + bb;     
+System.out.println((a == b)); //result = false     
+private static String getBB() {    
+return "b";     
+
+分析：JVM对于字符串引用bb，它的值在编译期无法确定，只有在程序运行期调用方法后，将方法的返回值和"a"来动态连接并分配地址为b，故上面程序的结果为false。 
+
+通过上面4个例子可以得出得知： 
+String  s  =  "a" + "b" + "c";   
+就等价于String s = "abc";  
+Java代码  收藏代码
+String  b  =  "b";       
+String  c  =  "c";       
+String  s  =   a  +  b  +  c;    
+
+这个就不一样了，最终结果等于：   
+StringBuffer temp = new StringBuffer();   
+temp.append(a).append(b).append(c);   
+String s = temp.toString(); 
+
+由上面的分析结果，可就不难推断出String 采用连接运算符（+）效率低下原因分析，形如这样的代码： 
+Java代码  收藏代码
+public static void main(String args[]) {    
+    String s = null;    
+        for(int i = 0; i < 100; i++) {    
+        s += "a";    
+        }    
+    }    
+
+每做一次 + 就产生个StringBuilder对象，然后append后就扔掉。下次循环再到达时重新产生个StringBuilder对象，然后 append 字符串，如此循环直至结束。 如果我们直接采用 StringBuilder 对象进行 append 的话，我们可以节省 N - 1 次创建和销毁对象的时间。所以对于在循环中要进行字符串连接的应用，一般都是用StringBuffer或StringBulider对象来进行append操作。 
+
+String对象的intern方法理解和分析： 
+Java代码  收藏代码
+private static String a = "ab";     
+    public static void main(String[] args){    
+        String s1 = "a";    
+        String s2 = "b";    
+        String s = s1 + s2;    
+        System.out.println(s == a);//false    
+        System.out.println(s.intern() == a);//true      
+    }    
+
+这里用到Java里面是一个常量池的问题。对于s1+s2操作，其实是在堆里面重新创建了一个新的对象,s保存的是这个新对象在堆空间的的内容，所以s与a的值是不相等的。而当调用s.intern()方法，却可以返回s在常量池中的地址值，因为a的值存储在常量池中，故s.intern和a的值相等
