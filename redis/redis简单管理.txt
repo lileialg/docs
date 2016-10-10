@@ -1,0 +1,3 @@
+启动：redis-server 配置文件 &
+关闭：进入redis-cli 执行shutdown
+查看使用信息:进入redis-cli 执行info
