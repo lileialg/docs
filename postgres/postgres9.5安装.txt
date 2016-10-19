@@ -1,0 +1,113 @@
+1、下载source包：wget https://ftp.postgresql.org/pub/source/v9.5.0/postgresql-9.5.0.tar.gz
+
+2、解压、配置：./configure --prefix=/opt/pgsql-9.5.0
+	问题：configure: error: readline library not found解决方法：yum -y install -y readline-devel
+	
+3、make
+
+4、make install
+
+5、创建用户postgres
+
+6、设置环境变量：
+export PGHOME=/opt/pgsql-9.5.0
+export PGDATA=/data/lilei/pgdata
+
+PATH=$PATH:$PGHOME/bin
+
+7、 初始化postgres数据库
+initdb
+
+8、启动postgres数据库实例
+
+#pg_ctl start
+
+9、 连接postgresql数据库
+
+#psql -h 127.0.0.1 -d postgres -U postgres
+
+3 常用命令
+为了便于记忆，这里把对应的mysql命令也列出来了。
+
+(1)列出所有的数据库
+mysql: show databases
+psql: \l或\list
+(2)切换数据库
+mysql: use dbname
+psql: \c dbname
+
+(3)列出当前数据库下的数据表
+mysql: show tables
+psql: \d
+
+(4)列出指定表的所有字段
+mysql: show columns from table name
+psql: \d tablename
+
+(5)查看指定表的基本情况
+mysql: describe tablename
+psql: \d+ tablename
+
+(6)退出登录
+mysql: quit 或者\q
+psql:\q
+
+
+
+postgis:
+1、wget http://download.osgeo.org/proj/proj-4.8.0.tar.gz
+
+When building PROJ4, you might encounter error like this:
+
+jniproj.c:52:26: fatal error: org_proj4_PJ.h: No such file or directory
+To solve it, go to src directory and edit jniproj.c then change this line
+
+#include "org_proj4_PJ.h"
+to
+
+#include "org_proj4_Projections.h"
+
+编辑文件/etc/ld.so.conf.d/proj-4.8.0.conf
+#vi /etc/ld.so.conf.d/proj-4.8.0.conf
+添加以下内容
+/opt/proj-4.8.0/lib
+
+保存并退出vi
+执行以下命令，将proj4的so库的路径添加到系统中
+#ldconfig 
+
+
+
+2、wget http://download.osgeo.org/geos/geos-3.3.7.tar.bz2
+tar jxvf geos-3.3.7.tar.bz2
+
+#cd geos-3.3.7
+#./configure --prefix=/opt/geos-3.3.7
+#make
+#make install
+
+编辑文件/etc/ld.so.conf.d/geos-3.3.7.conf
+#vi /etc/ld.so.conf.d/geos-3.3.7.conf
+添加以下内容
+/opt/geos-3.3.7/lib
+保存并退出vi
+执行以下命令，将proj4的so库的路径添加到系统中
+#ldconfig
+
+
+wget http://download.osgeo.org/postgis/source/postgis-2.2.0.tar.gz
+ ./configure --with-pgconfig=/opt/pgsql-9.5.0/bin/pg_config --with-geosconfig=/opt/geos-3.3.7/bin/geos-config --with-projdir=/opt/proj-4.8.0/
+ 
+ 问题：could not find xml2-config from libxml2 within the current path
+ yum install libxml2-devel
+ yum install libxml2
+
+./configure --with-pgconfig=/opt/pgsql-9.5.0/bin/pg_config --with-geosconfig=/opt/geos-3.3.7/bin/geos-config --with-projdir=/opt/proj-4.8.0/ --without-raster
+
+问题：configure: error: gdal-config not found
+yum install dgal
+yum install dgal-devel
+
+
+createdb postgis
+psql -h 127.0.0.1 -d postgis -U postgres -f /opt/pgsql-9.5.0/share/contrib/postgis-2.2/postgis.sql
