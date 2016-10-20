@@ -18,6 +18,12 @@ PATH=$PATH:$PGHOME/bin
 7、 初始化postgres数据库
 initdb
 
+远程访问修改：
+修改 pg_hba.conf 添加：
+host    all             all             0.0.0.0/0               trust
+修改 postgresql.conf 修改：
+
+
 8、启动postgres数据库实例
 
 #pg_ctl start
@@ -56,7 +62,9 @@ psql:\q
 
 postgis:
 1、wget http://download.osgeo.org/proj/proj-4.8.0.tar.gz
-
+./configure --prefix=/opt/proj-4.8.0
+make
+make install
 When building PROJ4, you might encounter error like this:
 
 jniproj.c:52:26: fatal error: org_proj4_PJ.h: No such file or directory
@@ -103,6 +111,8 @@ wget http://download.osgeo.org/postgis/source/postgis-2.2.0.tar.gz
  yum install libxml2
 
 ./configure --with-pgconfig=/opt/pgsql-9.5.0/bin/pg_config --with-geosconfig=/opt/geos-3.3.7/bin/geos-config --with-projdir=/opt/proj-4.8.0/ --without-raster
+make
+make install
 
 问题：configure: error: gdal-config not found
 yum install dgal
