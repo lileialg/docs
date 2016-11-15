@@ -80,3 +80,19 @@ SELECT STATEMENT, GOAL = ALL_ROWS			7	3	192
 	
 高水位：
 	全表扫描时，oracle将最多扫描到高水位线上的数据块。
+	
+正则	
+select count(*) from abc1 where regexp_like(object_name,'^[a-zA-Z]+$');
+select regexp_count('dsadas','^[a-zA-Z]+$') from abc1;
+select regexp_instr('abcde213addf','[0-9]+[A-z]+',1) from emp;
+select regexp_substr('abcde213addf--32sd','[0-9]+[A-z]+',1,2) from emp;
+
+select regexp_replace('abcde213addf--32sd','[0-9]+[A-z]+','dddd',1,2) from emp;
+
+
+select 
+regexp_substr('das,dsf,sdaf','[a-z]+',1,level)
+ from dual 
+connect by prior dbms_random.value is not null
+and 
+level<=regexp_count('das,dsf,sdaf','[a-z]+')
