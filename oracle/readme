@@ -1,0 +1,82 @@
+SGA:
+	共享池 shared pool：
+			库高速缓存：存放sql和执行计划 v$sql v$sql_plan 如果sql第一次解析需要获取串行的libarary latch
+			字典：配置信息
+	
+	数据库高速缓存 data buffer: 在验证数据块是否存在于缓冲区中以及更新LRU信息和接触计数的时候都必须获得latch
+	
+	重做缓存区 log buffer
+	
+	大缓冲区 large pool
+	
+查询转换：
+	优化器为了决定最终的执行计划而为不同的执行计划计算成本预估，禁用hint：no_query_transformation
+	examples:
+	select * from emp where deptno in (select deptno from dept)
+	----->
+	select a.* from emp a,dept b where a.deptno = b.deptno;
+	
+视图合并：
+	将内嵌或者存储式视图展开为能够独立分析或者与查询剩余部分合并成总体执行计划的独立查询块的转换。
+	
+	hint:merge no_merge
+	
+	除了no_merge禁止合并，还可以用rownum、聚合函数，intersect,minus等
+	
+	select 
+*
+  from emp a,
+       (select
+        
+         * from dept) b
+ where a.deptno = b.deptno
+ 
+ SELECT STATEMENT, GOAL = ALL_ROWS 
+ MERGE JOIN			 
+  TABLE ACCESS BY INDEX ROWID	SCOTT	DEPT	2	4	80		
+   INDEX FULL SCAN	SCOTT	PK_DEPT	1	4			
+  SORT JOIN			4	14	532	"A"."DEPTNO"="DEPT"."DEPTNO"	"A"."DEPTNO"="DEPT"."DEPTNO"
+   TABLE ACCESS FULL	SCOTT	EMP	3	14	532		
+
+   
+子查询解嵌套：
+	子查询解嵌套和视图合并相似之处都是通过一个单独的查询块来表示，不同之处在于位置不同，子查询在where后面，
+	常见的子查询解嵌套如：子查询转换为表关联
+	
+	hint：no_unnest禁用子查询解嵌套
+	除了no_unnest,group by,rownum也会禁用子查询解嵌套
+	
+
+谓词前推：
+	将谓语从一个内含查询块中应用到不可合并的的查询块中，目标是索引的使用或者其他对于数据集的筛选在查询中能够更早的进行。
+	select 
+--+ use(a,b)
+* from emp a,
+(select
+--+
+ deptno,avg(sal) sal from emp3
+group by deptno) b
+where a.deptno = b.deptno
+and a.sal > b.sal
+
+SELECT STATEMENT, GOAL = ALL_ROWS			7	3	192		
+ MERGE JOIN			7	3	192		
+  TABLE ACCESS BY INDEX ROWID	SCOTT	EMP	2	14	532		
+   INDEX FULL SCAN	SCOTT	IDX_EMP_DEPTNO	1	14			
+  FILTER							"A"."SAL">"B"."SAL"
+   SORT JOIN			5	14	364	"A"."DEPTNO"="B"."DEPTNO"	"A"."DEPTNO"="B"."DEPTNO"
+    VIEW	SCOTT		4	14	364		
+     SORT GROUP BY			4	14	364		
+      TABLE ACCESS FULL	SCOTT	EMP3	3	14	364		
+
+	  
+索引访问方式：
+	索引全扫描 nest loop查询可能会 select object_type from abc1 where object_type is not null;
+	索引快速扫描
+	索引跳跃
+	索引唯一
+	索引范围
+	
+	
+高水位：
+	全表扫描时，oracle将最多扫描到高水位线上的数据块。
