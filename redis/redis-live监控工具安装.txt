@@ -1,0 +1,61 @@
+redis监控工具 redis-live：
+
+  1、wget http://dl.fedoraproject.org/pub/epel/6/x86_64/python-pip-7.1.0-1.el6.noarch.rpm
+
+  2、wget ftp://ftp.is.freebsd.org/pub/CentOS/6.8/os/x86_64/Packages/python-setuptools-0.6.10-3.el6.noarch.rpm
+  
+  3、rpm -ivh python-setuptools-0.6.10-3.el6.noarch.rpm 
+  
+  4、rpm -ivh python-pip-7.1.0-1.el6.noarch.rpm 
+  
+  5、yum install git
+  
+  6、git clone https://github.com/kumarnitin/RedisLive.git
+  
+  cd RedisLive/
+  
+  cd src
+  
+  7、cp redis-live.conf.example redis-live.conf
+  
+  8、vi redis-live.conf
+  {
+        "RedisServers":
+        [ 
+
+         {
+          "server": "localhost",
+          "port" : 6390,
+          "password" : "lilei"
+         }
+        ],
+
+        "DataStoreType" : "redis",
+
+        "RedisStatsServer":
+        {
+         "server" : "localhost",
+         "port" : 6390,
+         "password" : "lilei"
+        },
+
+        "SqliteStatsStore" :
+        {
+         "path":  "to your sql lite file"
+        }
+	}	
+
+
+  9、pip install redis
+  
+  10、./redis-monitor.py --duration 120 &
+  
+  11、pip install tornado
+
+  12、pip install python-dateutil
+  
+  13、./redis-live.py &
+  
+  
+  监控web界面：
+  http://192.168.4.106:8888/index.html#

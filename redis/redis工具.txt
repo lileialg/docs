@@ -1,0 +1,24 @@
+redis问题解决工具：
+1、latency
+ redis-cli --latency -h localhost -p 6390 -a lilei
+ min: 0, max: 1, avg: 0.11 (1314 samples)
+ 
+2、monitor
+
+3、debug sleep 10
+
+4、slowlog get [num]
+
+5、watch:
+watch -n 1 -d "echo info | redis-cli -h localhost -p 6379 -a lilei "
+
+watch -n 1 -d "src/redis-cli -h 127.0.0.1 info | grep -e "connected_clients" -e "blocked_clients" -e "used_memory_human" -e "used_memory_peak_human" -e "rejected_connections" -e "evicted_keys" -e "instantaneous""
+
+6、watchdog:
+
+CONFIG SET watchdog-period 500
+
+7、client list
+localhost:6390> client list
+id=14 addr=127.0.0.1:41172 fd=6 name=afdsa age=3236 idle=0 flags=N db=0 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=32768 obl=0 oll=0 omem=0 events=r cmd=client
+id=16 addr=172.22.34.2:26616 fd=7 name= age=59 idle=0 flags=N db=0 sub=0 psub=0 multi=-1 qbuf=33 qbuf-free=32735 obl=0 oll=0 omem=0 events=r cmd=set
